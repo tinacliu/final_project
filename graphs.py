@@ -19,7 +19,7 @@ def rentPriceGraphs(data,outcode, price, min_rent,max_rent):
   ax1.set_ylabel('Per Room Rental Price')
   ax1.set_xlabel('Property Rented')
   ax1.set_ylim([min_rent, max_rent])
-  plt.title("%s Student Rental - Rented VS. Available" %outcode)
+  plt.title("%s Rental - Rented VS. Available" %outcode)
 
   # plot2 rent versus bathroom
   ax2 = fig.add_subplot(122)
@@ -28,7 +28,7 @@ def rentPriceGraphs(data,outcode, price, min_rent,max_rent):
   ax2.set_xlabel('Number of Bedrooms')
   ax2.set_ylabel('Per Room Rental Price')
   ax2.set_ylim([min_rent, max_rent])
-  plt.title("%s Student Rental by Num Bedrooms" %outcode)
+  plt.title("%s Rental by Num Bedrooms" %outcode)
 
   # return '-'
 
@@ -67,7 +67,7 @@ def areaOverview(grouped,outcode):
 
   ax2 = fig.add_subplot(122)
   plt.scatter(x=grouped['num_bedrooms'],y=grouped['avg_baths'],
-              s=grouped['room_pm']/5, c = grouped['proportion%'],marker='^', alpha=0.8)
+              c = grouped['proportion%'],marker='^', alpha=0.8)
   plt.xticks(bars,bars)
   plt.xlabel('Number of Bedrooms')
   plt.ylabel('Average Num. of Bathrooms')

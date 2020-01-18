@@ -1,11 +1,12 @@
 import lib
 import pandas as pd
 import numpy as np
+from pandas.io.json import json_normalize
 
 
-def getBathBristolData():
+
+def getRegionalData(postcodes, date, fileno):
 # note API call is limited to 100 calls per hour
-  postcodes = ['BA1','BA2','BS1','BS2','BS3','BS4','BS5','BS6','BS7','BS8','BS9']
   all_results = []
   call = lib.DataGetter()
 
@@ -15,7 +16,7 @@ def getBathBristolData():
       print(postcode+' added')
 
   df = json_normalize(all_results)
-  df.to_csv('./data/bath_bristol_rental.csv', index=False)
+  df.to_csv("./data/%s_rental%s.csv" %(date,fileno), index=False)
 
   print('data saved to csv in data folder')
 
@@ -27,8 +28,8 @@ def getLondonData():
   all_results = []
   call = lib.DataGetter()
 
-  result = call.getAllListings('London',0,99, False)
-  all_results += result
+  # result = call.getAllListings('London',0,99, False)
+  # all_results += result
 
   result = call.getAllListings('NW',0,99, False)
   all_results += result
@@ -82,8 +83,7 @@ def type_classify(x):
         return x
 
 
-
-def cleanBBData():
+def cleanData(df):
   """
   Load the data from CSV and conduct cleaning, steps including:
   <p>1.1 only load in the data columns where information is useful i.e. getting rid of irrelavant data saved from Zoopla API call</p>
@@ -92,18 +92,6 @@ def cleanBBData():
   <p>1.4 delete duplicates</p>
   """
 
-  # triming the original 56 columns to 17 useful columns
-  cols = ['bills_included','description',
-        'details_url','first_published_date',
-        'floor_plan', 'num_bathrooms','num_bedrooms','num_recepts',
-        'furnished_state', 'property_type', 'rental_prices.shared_occupancy',
-        'latitude', 'longitude','outcode',
-        'listing_id','status',
-        'rental_prices.per_month']
-
-  df = pd.read_csv('./data/bath_bristol_rental.csv', usecols=cols)
-
-
   # rename the columns
   df.columns = ['bills_included', 'description', 'details_url', 'first_published_date',
               'floor_plan', 'furnished_state', 'latitude', 'listing_id', 'longitude',
@@ -111,7 +99,7 @@ def cleanBBData():
               'property_type', 'rent_price', 'shared_occu','status'
              ]
 
-  # data series with null columns are: bills_included, description, floor_plan, furnished_state, property_type
+  df.drop_duplicates(subset='listing_id', keep='first', inplace=True)
 
   # clean Nulls in bills_included
   df['bills_included'].fillna(value=0, inplace=True)
@@ -135,27 +123,53 @@ def cleanBBData():
   # turn shared occupency to binary
   df['shared_occu'] = df['shared_occu'].map(lambda x: 1 if x == 'Y' else 0)
 
-  # after investigation, the 11 bathroom one is an error
-  df.drop(1835, inplace=True)
+  # two data points with missing longitude and latitde -> DELETE these
+  df.drop(df[df['longitude'].isna()].index, inplace=True)
+  df.drop(df[df['listing_id'] ==49186157].index, inplace=True)
 
+
+  exclude = ['Land','Parking/garage','Houseboat','Retail premises',
+                 'Office','Farm','Villa','Lodge','Leisure/hospitality']
 
   df['property_type'] = df['property_type'].map(lambda x: type_classify(x))
 
   # delete all rows with property type "parking/garage"
-  indexNames = df[df['property_type'] == 'Parking/garage'].index
-  df.drop(indexNames, inplace=True)
+  for type in exclude:
+      df.drop(df[df['property_type'] == type].index, inplace=True)
 
   df['property_type'].fillna(value='Missing', inplace=True)
+
+
 
   df['rented'] = df['status'].map(lambda x: 0 if x in ['to_rent'] else 1)
   df.drop(['status'], axis=1, inplace=True)
 
-  df.drop_duplicates(subset='listing_id', keep='first', inplace=True)
 
-  df.at[199, 'num_bedrooms'] = 6
-  df.at[199, 'num_bathrooms'] = 2
+  df['room_pm'] = df.apply(lambda x: per_room_price(x), axis=1)
+
 
   return df
+
+
+
+
+def cleanBBData():
+
+  # triming the original 56 columns to 17 useful columns
+  cols = ['bills_included','description',
+        'details_url','first_published_date',
+        'floor_plan', 'num_bathrooms','num_bedrooms','num_recepts',
+        'furnished_state', 'property_type', 'rental_prices.shared_occupancy',
+        'latitude', 'longitude','outcode',
+        'listing_id','status',
+        'rental_prices.per_month']
+
+  df = pd.read_csv('./data/bath_bristol_rental.csv', usecols=cols)
+
+  df_clean = cleanData(df)
+
+
+  return df_clean
 
 
 
@@ -180,62 +194,10 @@ def cleanLondonData():
 
   df = pd.read_csv('./data/london_rental_full.csv', usecols=cols)
 
-  # rename the columns
-  df.columns = ['bills_included', 'description', 'details_url', 'first_published_date',
-          'floor_plan', 'furnished_state', 'latitude', 'listing_id', 'longitude',
-          'num_bathrooms', 'num_bedrooms', 'num_recepts', 'outcode',
-          'property_type', 'rent_price', 'shared_occu','status'
-         ]
+  df_clean = cleanData(df)
 
-  df.drop_duplicates(subset='listing_id', keep='first', inplace=True)
-  # df.info()
-  # data series with null columns are: bills_included, description, floor_plan, furnished_state, property_type
+  return df_clean
 
-  # clean Nulls in bills_included
-  df['bills_included'].fillna(value=0, inplace=True)
-
-  # clean Nulls in description
-  df['description'].fillna(value='No description', inplace=True)
-
-  # clean Nulls and make floor_plan a binary column to state if floorplan is available
-  df['floor_plan'].fillna(value=0, inplace=True)
-  df['floor_plan'] = df['floor_plan'].map(lambda x: 1 if x != 0 else 0)
-
-  # generate a new column indicating student property
-  df['student'] = df['description'].map(lambda x: 1 if 'student' in x else 0)
-
-  # if furnished state is missing and its a student property, assume its furnithsed
-  df['furnished_state']  = np.where((df['furnished_state'].isna() & df['student'] == 1),
-                                  'furnished', df['furnished_state'])
-
-  df['furnished_state'].fillna(value='Missing', inplace=True)
-
-  # turn shared occupency to binary
-  df['shared_occu'] = df['shared_occu'].map(lambda x: 1 if x == 'Y' else 0)
-
-  # two data points with missing longitude and latitde -> DELETE these
-  df.drop(df[df['longitude'].isna()].index, inplace=True)
-
-
-  # Bathroom & bedroom no.CHEKC ->
-  # after investigation, one listing was shared occu but listed whole house spec
-  df.drop(df[df['listing_id'] ==49186157].index, inplace=True)
-
-  exclude = ['Land','Parking/garage','Houseboat','Retail premises',
-                 'Office','Farm','Villa','Lodge','Leisure/hospitality']
-
-  df['property_type'] = df['property_type'].map(lambda x: type_classify(x))
-
-  # delete all rows with property type "parking/garage"
-  for type in exclude:
-      df.drop(df[df['property_type'] == type].index, inplace=True)
-
-  df['property_type'].fillna(value='Missing', inplace=True)
-
-  df['rented'] = df['status'].map(lambda x: 0 if x in ['to_rent'] else 1)
-  df.drop(['status'], axis=1, inplace=True)
-
-  return df
 
 
 
@@ -253,8 +215,6 @@ def per_room_price(x):
 def getStudentRentals(df):
 
   student = df[(df['student']==1)]
-
-  student['room_pm'] = student.apply(lambda x: per_room_price(x), axis=1)
 
   return student
 
