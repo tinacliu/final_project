@@ -23,6 +23,27 @@ def getRegionalData(postcodes, date, fileno):
   return df
 
 
+def joinData():
+  all_files = ["./data/london_rental_full.csv"]
+  # all_files = []
+
+  for i in range(1,10):
+      all_files.append("./data/20200117_rental%s.csv" %i)
+
+  # triming the original 56 columns to 17 useful columns
+  cols = ['bills_included','description',
+      'details_url','first_published_date',
+      'floor_plan', 'num_bathrooms','num_bedrooms','num_recepts',
+      'furnished_state', 'property_type', 'rental_prices.shared_occupancy',
+      'latitude', 'longitude','outcode','county','post_town',
+      'listing_id','status',
+      'rental_prices.per_month']
+
+  df_from_each_file = (pd.read_csv(f, usecols=cols) for f in all_files)
+  concatenated_df   = pd.concat(df_from_each_file, ignore_index=True)
+
+  return concatenated_df
+
 
 def getLondonData():
   all_results = []
@@ -93,9 +114,9 @@ def cleanData(df):
   """
 
   # rename the columns
-  df.columns = ['bills_included', 'description', 'details_url', 'first_published_date',
+  df.columns = ['bills_included', 'county','description', 'details_url', 'first_published_date',
               'floor_plan', 'furnished_state', 'latitude', 'listing_id', 'longitude',
-              'num_bathrooms', 'num_bedrooms', 'num_recepts', 'outcode',
+              'num_bathrooms', 'num_bedrooms', 'num_recepts', 'outcode', 'post_town',
               'property_type', 'rent_price', 'shared_occu','status'
              ]
 
@@ -139,6 +160,9 @@ def cleanData(df):
 
   df['property_type'].fillna(value='Missing', inplace=True)
 
+  df['shortterm'] = df['description'].map(lambda x: 1 if 'short' in x else 0)
+  df.drop(df[df['shortterm'] == 1].index, inplace=True)
+  df.drop(['shortterm'], axis=1, inplace=True)
 
 
   df['rented'] = df['status'].map(lambda x: 0 if x in ['to_rent'] else 1)
@@ -157,12 +181,12 @@ def cleanBBData():
 
   # triming the original 56 columns to 17 useful columns
   cols = ['bills_included','description',
-        'details_url','first_published_date',
-        'floor_plan', 'num_bathrooms','num_bedrooms','num_recepts',
-        'furnished_state', 'property_type', 'rental_prices.shared_occupancy',
-        'latitude', 'longitude','outcode',
-        'listing_id','status',
-        'rental_prices.per_month']
+    'details_url','first_published_date',
+    'floor_plan', 'num_bathrooms','num_bedrooms','num_recepts',
+    'furnished_state', 'property_type', 'rental_prices.shared_occupancy',
+    'latitude', 'longitude','outcode','county','post_town',
+    'listing_id','status',
+    'rental_prices.per_month']
 
   df = pd.read_csv('./data/bath_bristol_rental.csv', usecols=cols)
 
@@ -188,7 +212,7 @@ def cleanLondonData():
     'details_url','first_published_date',
     'floor_plan', 'num_bathrooms','num_bedrooms','num_recepts',
     'furnished_state', 'property_type', 'rental_prices.shared_occupancy',
-    'latitude', 'longitude','outcode',
+    'latitude', 'longitude','outcode','county','post_town',
     'listing_id','status',
     'rental_prices.per_month']
 
