@@ -171,5 +171,36 @@ def grid_search(X_train, y_train, model, score = 'r2', cv=5):
 
 
 
+def predict_transform(A):
+    # remove "object"-type features and y from `X`
+    con_features = [ col for col in A.columns if A[col].dtype in ['int64','float64']]
+    A_con = A.loc[:,con_features]
+
+
+    # Scale the train and test data
+    A_sca = scaler.transform(A_con)
+
+
+    # add in the polynomial interations for the cont. variables
+    A_poly = poly.transform(A_sca)
+    A_cols = poly.get_feature_names(A.columns)
+
+
+    # Create X_cat which contains only the categorical variables
+    cat_features = [ col for col in A.columns if A[col].dtype == np.object]
+    A_cat = A.loc[:,cat_features]
+
+
+    # OneHotEncode Categorical variables
+    A_ohe = ohe.transform(A_cat)
+
+    columns = ohe.get_feature_names(input_features=A_cat.columns)
+    cat_df = pd.DataFrame(A_ohe.todense(), columns=columns)
+
+    A_all = pd.concat([pd.DataFrame(A_poly, columns=A_cols), cat_df], axis = 1)
+
+    return A_all
+
+
 
 
