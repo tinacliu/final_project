@@ -66,8 +66,7 @@ def areaOverview(grouped,outcode):
   plt.title("%s Rental - How big are the houses" %(outcode))
 
   ax2 = fig.add_subplot(122)
-  plt.scatter(x=grouped['num_bedrooms'],y=grouped['avg_baths'],
-              c = grouped['proportion%'],marker='^', alpha=0.8)
+  plt.scatter(x=grouped['num_bedrooms'],y=grouped['avg_baths'],marker='^', s=50,alpha=0.8)
   plt.xticks(bars,bars)
   plt.xlabel('Number of Bedrooms')
   plt.ylabel('Average Num. of Bathrooms')

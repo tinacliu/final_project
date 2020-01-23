@@ -20,8 +20,9 @@ class ModelTry():
     self.X = X
     self.y = y
 
-    self.X_train , self.X_test, self.y_train, self.y_test = train_test_split(X, y,
-      test_size=test_size, random_state=42)
+    if test_size < 1:
+      self.X_train , self.X_test, self.y_train, self.y_test = train_test_split(X, y,
+        test_size=test_size, random_state=42)
 
 
 
@@ -93,7 +94,7 @@ class ModelTry():
     else:
       X_train_tr, X_test_tr = X_train_all, X_test_all
 
-    return X_train_tr, X_test_tr, y_train, y_test
+    return X_train_tr, X_test_tr, y_train, y_test, scaler, poly, ohe
 
 
 
@@ -118,7 +119,7 @@ class ModelTry():
       lin_reg = Ridge(alpha)
 
 
-    X_train , X_test, y_train, y_test = self.data_transform(only_cont, poly)
+    X_train , X_test, y_train, y_test, scaler, poly, ohe = self.data_transform(only_cont, poly)
     lin_reg.fit(X_train, y_train)
 
     self.print_results(X_train, X_test, y_train, y_test, lin_reg)
@@ -140,7 +141,7 @@ class ModelTry():
       vis_pred.show();
 
 
-    return lin_reg, model_coef, X_train, y_train
+    return lin_reg, model_coef, X_train, y_train, scaler, poly, ohe
 
 
 def grid_search(X_train, y_train, model, score = 'r2', cv=5):
